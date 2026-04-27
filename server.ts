@@ -20,7 +20,7 @@ const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
 
-// Helper function to extract text (Task 2.1) 
+// Helper function to extract text  
 async function extractText(filePath: string): Promise<string> {
   const dataBuffer = fs.readFileSync(filePath);
   const parser = new PDFParse({ data: dataBuffer });
@@ -28,7 +28,7 @@ async function extractText(filePath: string): Promise<string> {
   return data.text;
 }
 
-// Task 2.2: Splitting text into manageable pieces
+// Splitting text into manageable pieces
 function createChunks(text: string, size: number = 1000, overlap: number = 100): string[] {
   const chunks: string[] = [];
 
@@ -51,7 +51,7 @@ app.post('/upload', upload.single('pdf'), async (req, res) => {
 
     console.log('File received:', req.file.originalname);
 
-    // Step 2.1: Extract the text from the saved PDF 
+    // Extract the text from the saved PDF 
     const rawText = await extractText(req.file.path);
 
 
@@ -89,3 +89,4 @@ app.listen(port, () => {
 });
 
 // Restart trigger
+
