@@ -16,3 +16,9 @@ model Document {
   content   String
   embedding String
 }
+
+model DocumentChunk {
+  id        Int      @id @default(autoincrement())
+  content   String
+  metadata  Json?
+}

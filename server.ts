@@ -62,19 +62,31 @@ app.post('/upload', upload.single('pdf'), async (req, res) => {
       console.log('Sample Chunk 1:', chunks[0].substring(0, 200));
     }
 
-    // Update your response to show the chunk count
-    res.status(200).json({
-      message: 'File processed and chunked successfully',
-      totalChunks: chunks.length
-    });
-
     // Log the first 500 characters to verify success 
     console.log('--- Extracted Text Snippet ---');
     console.log(rawText.substring(0, 500));
 
+    // Save chunks to the Database
+    const savedChunks = await prisma.documentChunk.createMany({
+      data: chunks.map((content) => ({
+        content: content,
+        metadata: {
+          source: req.file?.originalname,
+          task: "2.4",
+          createdAt: new Date()
+        },
+      })),
+    });
+
+    console.log(`✅ Success: ${savedChunks.count} chunks saved to PostgreSQL.`);
+
+
+    // res.status block
     res.status(200).json({
-      message: 'File uploaded and text extracted successfully',
+      message: 'File uploaded, extracted, and saved to database successfully',
       charCount: rawText.length,
+      totalChunks: chunks.length,
+      savedChunks: savedChunks.count,
       snippet: rawText.substring(0, 100) + "..."
     });
 
