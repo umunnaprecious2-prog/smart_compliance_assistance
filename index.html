@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Compliance Assistant</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f4f7f6;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        input[type="file"],
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        #chatbox {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            background: #fafafa;
+            margin-top: 10px;
+        }
+
+        .citation {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            font-style: italic;
+            display: block;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Smart Compliance Assistant</h1>
+
+    <div class="card">
+        <h2>1. Upload Document</h2>
+        <input type="file" id="fileInput">
+        <button onclick="uploadFile()">Upload PDF</button>
+        <p id="uploadStatus"></p>
+    </div>
+
+    <div class="card">
+        <h2>2. Ask a Question</h2>
+        <input type="text" id="questionInput" placeholder="Ask about the document...">
+        <button onclick="askQuestion()">Submit Question</button>
+        <div id="chatbox"></div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:3000/api";
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const status = document.getElementById('uploadStatus');
+            if (!fileInput.files[0]) return alert("Select a file first");
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            status.innerText = "Uploading and indexing...";
+            try {
+                const response = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+                const result = await response.json();
+                status.innerText = "Upload Successful!";
+            } catch (err) {
+                status.innerText = "Upload failed. Make sure server is running.";
+            }
+        }
+
+        async function askQuestion() {
+            const questionInput = document.getElementById('questionInput');
+            const chatbox = document.getElementById('chatbox');
+            const question = questionInput.value;
+            if (!question) return;
+
+            chatbox.innerHTML += `<p><strong>You:</strong> ${question}</p>`;
+            questionInput.value = "";
+
+            try {
+                const response = await fetch(`${API_BASE}/chat/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+                const result = await response.json();
+
+                if (result.error) {
+                    chatbox.innerHTML += `<p style="color:red"><strong>Error:</strong> ${result.error}</p>`;
+                } else {
+                    chatbox.innerHTML += `<p><strong>AI:</strong> ${result.answer}</p>`;
+                    result.citations.forEach(c => {
+                        chatbox.innerHTML += `<span class="citation">Source: [${c.chunkId}] ${c.excerpt}</span>`;
+                    });
+                }
+            } catch (err) {
+                chatbox.innerHTML += `<p style="color:red">Error: Could not reach the server.</p>`;
+            }
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+    </script>
+</body>
+
+</html>
