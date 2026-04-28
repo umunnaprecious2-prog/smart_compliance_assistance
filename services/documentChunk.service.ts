@@ -5,7 +5,7 @@ export async function saveDocumentChunks(chunks: string[], sourceName?: string) 
     data: chunks.map((content) => ({
       content: content,
       metadata: {
-        source: sourceName,
+        source: sourceName ?? null,
         task: "2.4",
         createdAt: new Date()
       },
