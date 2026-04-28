@@ -1,11 +1,10 @@
 import express from 'express';
 import multer from 'multer';
-import fs from 'fs';
-import { extractText, createChunks } from '../utils/file.helper';
-import { saveDocumentChunks } from '../services/documentChunk.service';
+import fs from 'fs/promises';
+import { extractTextFromPDF } from '../utils/file.helper.ts';
+import { processAndSaveChunks } from '../services/documentChunk.service.ts';
 
 const router = express.Router();
-
 const upload = multer({ dest: 'uploads/' });
 
 router.post('/', upload.single('pdf'), async (req, res) => {
@@ -20,8 +19,14 @@ router.post('/', upload.single('pdf'), async (req, res) => {
     let chunks: string[];
 
     try {
-      rawText = await extractText(req.file.path);
-      chunks = createChunks(rawText);
+      rawText = await extractTextFromPDF(req.file.path);
+
+      const chunkSize = 1000;
+      chunks = [];
+      for (let i = 0; i < rawText.length; i += chunkSize) {
+        chunks.push(rawText.substring(i, i + chunkSize));
+      }
+
       console.log(`Created ${chunks.length} chunks from the PDF.`);
     } catch (extractionError) {
       console.error('Extraction Error:', extractionError);
@@ -29,11 +34,11 @@ router.post('/', upload.single('pdf'), async (req, res) => {
     }
 
     try {
-      const savedChunks = await saveDocumentChunks(chunks, req.file.originalname);
+      const savedChunks = await processAndSaveChunks(chunks, req.file.originalname);
       console.log(`✅ Success: ${savedChunks.count} chunks saved to PostgreSQL.`);
 
       res.status(200).json({
-        message: 'File uploaded, extracted, and saved to database successfully',
+        message: 'File uploaded, processed, and saved successfully',
         charCount: rawText.length,
         totalChunks: chunks.length,
         savedChunks: savedChunks.count,
@@ -46,7 +51,7 @@ router.post('/', upload.single('pdf'), async (req, res) => {
 
   } finally {
     if (req.file && req.file.path) {
-      await fs.promises.unlink(req.file.path).catch(e => console.error('Failed to delete temporary file:', e));
+      await fs.unlink(req.file.path).catch(e => console.error('Cleanup Error:', e));
     }
   }
 });

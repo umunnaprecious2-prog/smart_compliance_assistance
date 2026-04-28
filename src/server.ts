@@ -1,6 +1,8 @@
 import express from 'express';
 import 'dotenv/config';
-import uploadRouter from './routes/upload.route';
+import uploadRouter from './routes/upload.route.ts';
+import searchRoute from './routes/search.route.ts';
+
 
 const app = express();
 const port = 3000;
@@ -8,6 +10,8 @@ const port = 3000;
 app.use(express.json());
 
 app.use('/upload', uploadRouter);
+app.use('/api', searchRoute);
+
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);

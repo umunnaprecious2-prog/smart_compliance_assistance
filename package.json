@@ -1,21 +1,24 @@
 {
+  "type": "module",
   "dependencies": {
-    "@genkit-ai/googleai": "^1.28.0",
+    "@google/generative-ai": "^0.24.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "@types/express": "^5.0.6",
-    "@types/node": "^25.6.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "genkit": "^1.33.0",
-    "multer": "^2.1.1",
-    "pdf-parse": "^2.4.5",
-    "pg": "^8.20.0",
-    "prisma": "^7.8.0",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^6.0.3"
+    "multer": "^1.4.5-lts.1",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.11.0",
+    "prisma": "^7.8.0"
   },
   "devDependencies": {
-    "@types/multer": "^2.1.0"
+    "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.0.0",
+    "@types/pdf-parse": "^1.1.4",
+    "@types/pg": "^8.11.0",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3"
   }
 }
