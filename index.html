@@ -67,6 +67,122 @@
             display: block;
             margin-top: 5px;
         }
+
+        .response-metadata {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .metadata-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metadata-label {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metadata-value {
+            color: #34495e;
+            margin-top: 3px;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 6px;
+            background: #ddd;
+            border-radius: 3px;
+            margin-top: 3px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .ai-response {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .user-message {
+            background: #e8f5e9;
+            border-left: 4px solid #27ae60;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .pii-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            color: #856404;
+        }
+
+        .citations-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .citation-item {
+            padding: 8px;
+            background: white;
+            border-left: 3px solid #17a2b8;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .citation-id {
+            font-weight: bold;
+            color: #17a2b8;
+        }
+
+        .session-badge {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+
+        #sessionsList {
+            font-size: 0.9em;
+            max-height: calc(500px - 50px);
+            overflow-y: auto;
+        }
+
+        .session-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .session-item:hover {
+            background: #ecf0f1;
+            transform: translateX(2px);
+        }
     </style>
 </head>
 
@@ -76,20 +192,127 @@
 
     <div class="card">
         <h2>1. Upload Document</h2>
-        <input type="file" id="fileInput">
+        <input type="file" id="fileInput" accept=".pdf">
         <button onclick="uploadFile()">Upload PDF</button>
         <p id="uploadStatus"></p>
     </div>
 
-    <div class="card">
-        <h2>2. Ask a Question</h2>
-        <input type="text" id="questionInput" placeholder="Ask about the document...">
-        <button onclick="askQuestion()">Submit Question</button>
-        <div id="chatbox"></div>
+    <div style="display: flex; gap: 20px;">
+        <div style="flex: 1;">
+            <div class="card">
+                <h2>2. Ask a Question & Get Answer</h2>
+                <input type="text" id="questionInput" placeholder="Ask about the document...">
+                <button onclick="askQuestion()">Submit Question</button>
+                <div id="chatbox"></div>
+            </div>
+        </div>
+        <div class="card" style="width: 250px; height: fit-content;">
+            <div id="sessionsList"></div>
+            <button onclick="startNewChat()" style="margin-top: 10px; width: 100%; background: #27ae60;">
+                + New Chat
+            </button>
+        </div>
     </div>
 
     <script>
         const API_BASE = "http://localhost:3000/api";
+        let currentSessionId = localStorage.getItem('currentSessionId') || null;
+
+        async function loadSessions() {
+            try {
+                const response = await fetch(`${API_BASE}/chat/sessions`);
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    console.error('Server error:', result);
+                    return;
+                }
+                
+                const sessionsList = document.getElementById('sessionsList');
+                sessionsList.innerHTML = '<h3>Past Conversations</h3>';
+                
+                if (!result.sessions || result.sessions.length === 0) {
+                    sessionsList.innerHTML += '<p style="color:#999;">No sessions yet</p>';
+                    return;
+                }
+                
+                result.sessions.forEach(session => {
+                    const sessionDiv = document.createElement('div');
+                    sessionDiv.className = 'session-item';
+                    sessionDiv.innerHTML = `
+                        <div onclick="loadSession(${session.id})" style="cursor:pointer; padding:10px; border: 1px solid #ddd; margin:5px; border-radius:4px;">
+                            <strong>${session.title}</strong>
+                            <small style="display:block; color:#999;">${new Date(session.updatedAt).toLocaleDateString()}</small>
+                        </div>
+                    `;
+                    sessionsList.appendChild(sessionDiv);
+                });
+            } catch (err) {
+                console.error('Error loading sessions:', err);
+            }
+        }
+
+        async function loadSession(sessionId) {
+            try {
+                const response = await fetch(`${API_BASE}/chat/session/${sessionId}`);
+                const result = await response.json();
+                
+                currentSessionId = sessionId;
+                localStorage.setItem('currentSessionId', sessionId);
+                
+                const chatbox = document.getElementById('chatbox');
+                chatbox.innerHTML = '';
+                
+                result.messages.forEach(msg => {
+                    const role = msg.role === 'user' ? 'You' : 'AI';
+                    if (msg.role === 'user') {
+                        chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${msg.content}</div>`;
+                    } else {
+                        chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${msg.content}</div>`;
+                        
+                        if (msg.confidenceScore !== null && msg.confidenceScore !== undefined) {
+                            const confidencePercent = (msg.confidenceScore * 100).toFixed(0);
+                            const confidenceColor = msg.confidenceScore > 0.7 ? '#27ae60' : 
+                                                   msg.confidenceScore > 0.4 ? '#f39c12' : '#e74c3c';
+                            const fillWidth = (msg.confidenceScore * 100).toFixed(0);
+                            chatbox.innerHTML += `
+                                <div class="response-metadata">
+                                    <div class="metadata-item">
+                                        <span class="metadata-label">Confidence Score</span>
+                                        <div class="metadata-value" style="color:${confidenceColor}; font-weight:bold;">${confidencePercent}%</div>
+                                        <div class="confidence-bar">
+                                            <div class="confidence-fill" style="width:${fillWidth}%; background:${confidenceColor};"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        if (msg.citations && msg.citations.length > 0) {
+                            chatbox.innerHTML += `<div class="citations-section"><strong>📚 Source Citations:</strong>`;
+                            msg.citations.forEach(c => {
+                                chatbox.innerHTML += `
+                                    <div class="citation-item">
+                                        <span class="citation-id">Chunk #${c.chunkId}</span>: ${c.excerpt}...
+                                    </div>
+                                `;
+                            });
+                            chatbox.innerHTML += `</div>`;
+                        }
+                    }
+                });
+                chatbox.scrollTop = chatbox.scrollHeight;
+            } catch (err) {
+                console.error('Error loading session:', err);
+            }
+        }
+
+        function startNewChat() {
+            currentSessionId = null;
+            localStorage.removeItem('currentSessionId');
+            document.getElementById('chatbox').innerHTML = '';
+            loadSessions();
+        }
 
         async function uploadFile() {
             const fileInput = document.getElementById('fileInput');
@@ -97,11 +320,11 @@
             if (!fileInput.files[0]) return alert("Select a file first");
 
             const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+            formData.append('pdf', fileInput.files[0]);
 
             status.innerText = "Uploading and indexing...";
             try {
-                const response = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+                const response = await fetch(`http://localhost:3000/upload`, { method: 'POST', body: formData });
                 const result = await response.json();
                 status.innerText = "Upload Successful!";
             } catch (err) {
@@ -115,30 +338,82 @@
             const question = questionInput.value;
             if (!question) return;
 
-            chatbox.innerHTML += `<p><strong>You:</strong> ${question}</p>`;
+            chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${question}</div>`;
             questionInput.value = "";
 
             try {
                 const response = await fetch(`${API_BASE}/chat/ask`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question })
+                    body: JSON.stringify({ 
+                        question,
+                        sessionId: currentSessionId
+                    })
                 });
                 const result = await response.json();
+
+                if (result.sessionId) {
+                    currentSessionId = result.sessionId;
+                    localStorage.setItem('currentSessionId', result.sessionId);
+                }
 
                 if (result.error) {
                     chatbox.innerHTML += `<p style="color:red"><strong>Error:</strong> ${result.error}</p>`;
                 } else {
-                    chatbox.innerHTML += `<p><strong>AI:</strong> ${result.answer}</p>`;
-                    result.citations.forEach(c => {
-                        chatbox.innerHTML += `<span class="citation">Source: [${c.chunkId}] ${c.excerpt}</span>`;
-                    });
+                    chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${result.answer}</div>`;
+                    
+                    if (result.warning) {
+                        chatbox.innerHTML += `<div class="pii-warning"><strong>⚠️ Privacy Protection:</strong> ${result.warning}</div>`;
+                    }
+
+                    const confidencePercent = (result.confidenceScore * 100).toFixed(0);
+                    const confidenceColor = result.confidenceScore > 0.7 ? '#27ae60' : 
+                                           result.confidenceScore > 0.4 ? '#f39c12' : '#e74c3c';
+                    const fillWidth = (result.confidenceScore * 100).toFixed(0);
+                    
+                    chatbox.innerHTML += `
+                        <div class="response-metadata">
+                            <div class="metadata-item">
+                                <span class="metadata-label">Session ID</span>
+                                <span class="metadata-value"><span class="session-badge">${result.sessionId}</span></span>
+                            </div>
+                            <div class="metadata-item">
+                                <span class="metadata-label">Confidence Score</span>
+                                <div class="metadata-value" style="color:${confidenceColor}; font-weight:bold;">${confidencePercent}%</div>
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width:${fillWidth}%; background:${confidenceColor};"></div>
+                                </div>
+                            </div>
+                            <div class="metadata-item">
+                                <span class="metadata-label">PII Redacted</span>
+                                <span class="metadata-value">${result.piiRedacted ? '✓ Yes' : '✗ No'}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if (result.citations && result.citations.length > 0) {
+                        chatbox.innerHTML += `<div class="citations-section"><strong>📚 Source Citations (${result.citations.length}):</strong>`;
+                        result.citations.forEach(c => {
+                            chatbox.innerHTML += `
+                                <div class="citation-item">
+                                    <span class="citation-id">Chunk #${c.chunkId}</span>: ${c.excerpt}...
+                                </div>
+                            `;
+                        });
+                        chatbox.innerHTML += `</div>`;
+                    }
+                    
+                    loadSessions();
                 }
             } catch (err) {
                 chatbox.innerHTML += `<p style="color:red">Error: Could not reach the server.</p>`;
             }
             chatbox.scrollTop = chatbox.scrollHeight;
         }
+
+        window.onload = () => {
+            loadSessions();
+        };
     </script>
 </body>
 

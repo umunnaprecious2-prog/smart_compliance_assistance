@@ -2,10 +2,17 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'fs/promises';
 import { extractTextFromPDF } from '../utils/file.helper.ts';
+import { semanticChunkWithMetrics } from '../utils/chunking.helper.ts';
 import { processAndSaveChunks } from '../services/documentChunk.service.ts';
+import { prisma } from '../lib/prisma.ts';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
+
+router.get('/', async (req, res) => {
+  const result = await prisma.document.findMany();
+  res.json(result);
+});
 
 router.post('/', upload.single('pdf'), async (req, res) => {
   if (!req.file) {
@@ -15,34 +22,39 @@ router.post('/', upload.single('pdf'), async (req, res) => {
   try {
     console.log('File received:', req.file.originalname);
 
-    let rawText: string;
-    let chunks: string[];
+    let extraction: Awaited<ReturnType<typeof extractTextFromPDF>>;
+    let chunkingMetrics: Awaited<ReturnType<typeof semanticChunkWithMetrics>>;
 
     try {
-      rawText = await extractTextFromPDF(req.file.path);
+      extraction = await extractTextFromPDF(req.file.path);
 
-      const chunkSize = 1000;
-      chunks = [];
-      for (let i = 0; i < rawText.length; i += chunkSize) {
-        chunks.push(rawText.substring(i, i + chunkSize));
-      }
+      chunkingMetrics = semanticChunkWithMetrics(extraction.text);
 
-      console.log(`Created ${chunks.length} chunks from the PDF.`);
+      console.log(
+        `[Upload] Extracted via "${extraction.strategy}" — ${chunkingMetrics.totalChunks} semantic chunks ` +
+        `(avg ${chunkingMetrics.avgChunkSize}B, ratio ${chunkingMetrics.compressionRatio})` +
+        (extraction.pageCount ? `, ${extraction.pageCount} pages` : '')
+      );
     } catch (extractionError) {
       console.error('Extraction Error:', extractionError);
-      return res.status(500).json({ error: 'Failed to extract text from PDF' });
+      return res.status(422).json({
+        error: 'Failed to extract text from PDF',
+        detail: (extractionError as any).message,
+      });
     }
 
     try {
-      const savedChunks = await processAndSaveChunks(chunks, req.file.originalname);
-      console.log(`✅ Success: ${savedChunks.count} chunks saved to PostgreSQL.`);
+      const savedDoc = await processAndSaveChunks(chunkingMetrics.chunks, req.file.originalname);
+      console.log(`[Database] ${savedDoc.chunks.length} semantic chunks saved to PostgreSQL.`);
 
       res.status(200).json({
-        message: 'File uploaded, processed, and saved successfully',
-        charCount: rawText.length,
-        totalChunks: chunks.length,
-        savedChunks: savedChunks.count,
-        snippet: rawText.substring(0, 100) + "..."
+        message: 'File processed and saved successfully',
+        documentId: savedDoc.id,
+        chunksCount: chunkingMetrics.totalChunks,
+        pageCount: extraction.pageCount ?? null,
+        extractionStrategy: extraction.strategy,
+        chunkingStrategy: 'semantic-paragraph-aware',
+        avgChunkSize: chunkingMetrics.avgChunkSize,
       });
     } catch (dbError) {
       console.error('Database Persistence Error:', dbError);
@@ -50,7 +62,7 @@ router.post('/', upload.single('pdf'), async (req, res) => {
     }
 
   } finally {
-    if (req.file && req.file.path) {
+    if (req.file?.path) {
       await fs.unlink(req.file.path).catch(e => console.error('Cleanup Error:', e));
     }
   }
