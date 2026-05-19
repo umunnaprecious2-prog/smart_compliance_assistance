@@ -27,7 +27,7 @@ model DocumentChunk {
   id                 Int                         @id @default(autoincrement())
   content            String
   metadata           Json?
-  embedding          Unsupported("vector(768)")?
+  embedding          Unsupported("vector(3072)")?
   embeddingGenerated Boolean                     @default(false)
 
   documentId Int

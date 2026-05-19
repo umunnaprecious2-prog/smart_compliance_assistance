@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { semanticSearch } from "./search.service.ts";
 import { redactPII, containsPII } from "../utils/pii-redactor.ts";
 import { getSessionMessages } from "./chat-history.service.ts";
+import { MODELS } from "../config/models.ts";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -14,7 +15,6 @@ const generateFallbackResponse = async (question: string, chunks: any[]): Promis
     const content = firstChunk.content || "";
     let excerpt = content.substring(0, 200);
 
-    // Apply redaction to fallback excerpt
     if (await containsPII(excerpt)) {
         const redacted = await redactPII(excerpt);
         excerpt = redacted.redactedText;
@@ -26,28 +26,23 @@ const generateFallbackResponse = async (question: string, chunks: any[]): Promis
 export const calculateConfidence = (chunks: any[], question: string, piiRedacted: boolean): number => {
     if (!chunks || chunks.length === 0) return 0;
 
-    // 1. Vector similarity (up to 0.4)
-    // Distance 0 = 100% similar, Distance 1+ = 0% similar
     const similarities = chunks.map(c => {
         return c.distance !== undefined ? Math.max(0, Math.min(1, 1 - c.distance)) : 0.4;
     });
-    
+
     const avgSimilarity = similarities.reduce((sum, s) => sum + s, 0) / chunks.length;
     const qualityScore = avgSimilarity * 0.4;
 
-    // 2. Chunk relevance (only count chunks with > 0.15 similarity)
     const relevantCount = similarities.filter(s => s > 0.15).length;
     const chunkRelevance = Math.min(relevantCount / 5, 1) * 0.3;
 
-    // 3. PII Penalty (up to -0.2)
     const piiPenalty = piiRedacted ? -0.2 : 0;
 
-    // 4. Question clarity (up to 0.1)
     const questionLength = question.length;
     const clarityScore = (Math.min(questionLength / 50, 1)) * 0.1;
 
     const score = Math.max(0, Math.min(1, chunkRelevance + qualityScore + piiPenalty + clarityScore));
-    
+
     console.log(`[Confidence] Total: ${score.toFixed(3)} (Relevance: ${chunkRelevance.toFixed(2)}, Quality: ${qualityScore.toFixed(2)}, PII: ${piiPenalty}, Clarity: ${clarityScore.toFixed(2)})`);
 
     return score;
@@ -128,23 +123,20 @@ ANSWER:
         let responseText: string;
         try {
             const timeoutPromise = new Promise<string>((_, reject) =>
-                setTimeout(() => reject(new Error("Gemini API timeout after 30s")), 30000)
+                setTimeout(() => reject(new Error("API timeout after 30s")), 30000)
             );
 
             const chatPromise = (async () => {
-                const apiKey = process.env.GEMINI_API_KEY || "";
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                const model = genAI.getGenerativeModel({ model: MODELS.GENERATIVE });
                 const result = await model.generateContent(prompt);
                 return result.response.text();
             })();
 
             responseText = await Promise.race([chatPromise, timeoutPromise]);
         } catch (apiError) {
-            console.error("Gemini API Error (full details):", apiError);
+            console.error("API Error (full details):", apiError);
             console.warn("Falling back to document excerpt response.");
-            
-            // Smart Fallback: Only show document excerpts if they seem truly relevant
+
             if (confidenceScore < 0.45) {
                 responseText = "I cannot find any information in the documents related to your question. (AI is currently unavailable, and document relevance is low).";
             } else {
@@ -232,9 +224,7 @@ ANSWER:
 
             const chatPromise = (async function* () {
                 try {
-                    const apiKey = process.env.GEMINI_API_KEY || "";
-                    const genAI = new GoogleGenerativeAI(apiKey);
-                    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                    const model = genAI.getGenerativeModel({ model: MODELS.GENERATIVE });
                     const response = await model.generateContentStream(prompt);
 
                     for await (const chunk of response.stream) {
@@ -244,7 +234,7 @@ ANSWER:
                         }
                     }
                 } catch (apiError) {
-                    console.error("Gemini Stream Error (full details):", apiError);
+                    console.error("Stream Error (full details):", apiError);
                     console.warn("Falling back to document excerpt stream.");
                     for (const chunk of chunks) {
                         let text = chunk.content.substring(0, 200);
@@ -265,7 +255,7 @@ ANSWER:
             }
         } catch (error) {
             console.warn("Stream generation error (using fallback):", (error as any).message);
-            
+
             const confidence = calculateConfidence(chunks, question, false);
             if (confidence < 0.3) {
                 yield "I cannot find relevant information in the documents to answer your question.";

@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { generateEmbedding } from '../utils/ai.helper.ts';
 
 export const processAndSaveChunks = async (chunks: string[], sourceName: string) => {
   const dataToSave = chunks.map((content, index) => {
@@ -22,10 +23,24 @@ export const processAndSaveChunks = async (chunks: string[], sourceName: string)
 
   for (const chunk of dataToSave) {
     const metadataJson = JSON.stringify(chunk.metadata);
+
     await prisma.$executeRaw`
       INSERT INTO "DocumentChunk" (content, metadata, "embeddingGenerated", "documentId")
       VALUES (${chunk.content}, ${metadataJson}::jsonb, false, ${result.id})
     `;
+
+    try {
+      const embedding = await generateEmbedding(chunk.content);
+      const embeddingStr = `[${embedding.join(',')}]`;
+
+      await prisma.$executeRaw`
+        UPDATE "DocumentChunk" 
+        SET embedding = ${embeddingStr}::vector, "embeddingGenerated" = true
+        WHERE "documentId" = ${result.id} AND content = ${chunk.content}
+      `;
+    } catch (error) {
+      console.error(`Failed to generate embedding for chunk in ${sourceName}:`, (error as any).message);
+    }
   }
 
   const updatedResult = await prisma.document.findUnique({

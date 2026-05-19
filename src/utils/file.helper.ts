@@ -1,6 +1,7 @@
 import pdf from 'pdf-parse';
 import fs from 'fs/promises';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { MODELS } from '../config/models.ts';
 
 export interface ExtractionResult {
   text: string;
@@ -56,7 +57,7 @@ async function extractWithPdfJs(buffer: Buffer): Promise<{ text: string; pageCou
 
   if (typeof globalThis.DOMMatrix === 'undefined') {
     (globalThis as any).DOMMatrix = class DOMMatrix {
-      constructor() {}
+      constructor() { }
       static fromFloat32Array() { return new DOMMatrix(); }
       static fromFloat64Array() { return new DOMMatrix(); }
     };
@@ -90,7 +91,7 @@ async function extractWithGeminiOCR(buffer: Buffer): Promise<{ text: string }> {
   if (!apiKey) throw new Error('No Gemini API key configured for OCR fallback');
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: MODELS.GENERATIVE });
 
   const base64Data = buffer.toString('base64');
 
@@ -126,7 +127,7 @@ export const extractTextFromPDF = async (filePath: string): Promise<ExtractionRe
     const { text, pageCount } = await extractWithPdfParse(buffer);
     const cleaned = normalizeText(text);
     console.log(`[Extraction] 1. pdf-parse found ${cleaned.length} characters across ${pageCount} pages`);
-    
+
     if (isMeaningful(cleaned)) {
       return { text: cleaned, strategy: 'pdf-parse', pageCount };
     }

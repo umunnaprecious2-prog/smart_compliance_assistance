@@ -16,7 +16,7 @@ const keywordSearch = async (query: string, limit = 5, documentId?: number) => {
   const chunks = await prisma.documentChunk.findMany({
     select: { id: true, content: true, metadata: true },
     where: documentId ? { documentId } : undefined,
-    take: limit * 10, // Wider initial scan
+    take: limit * 10,
   });
 
   const scored = chunks.map(chunk => {
@@ -29,9 +29,6 @@ const keywordSearch = async (query: string, limit = 5, documentId?: number) => {
       score += (matches ? matches.length : 0);
     });
 
-    // Normalize distance for keyword search (max similarity 0.5)
-    // distance = 1 - (score / (score + 10)) * 0.5
-    // This ensures keywords alone never look as good as a vector match
     return {
       ...chunk,
       distance: 1 - (Math.min(score / (score + 5), 1) * 0.5),
@@ -53,14 +50,6 @@ export const semanticSearch = async (query: string, limit = 5, documentId?: numb
   try {
     const queryVector = await generateEmbedding(query);
     const vectorString = `[${queryVector.join(',')}]`;
-
-    const chunksWithoutEmbeddings = await prisma.documentChunk.count({
-      where: documentId ? { embeddingGenerated: false, documentId } : { embeddingGenerated: false },
-    } as any);
-
-    if (chunksWithoutEmbeddings > 0) {
-      await generateMissingEmbeddings(documentId);
-    }
 
     let results: any[];
     if (documentId) {

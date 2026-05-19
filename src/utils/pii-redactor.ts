@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { MODELS } from "../config/models.ts";
 
 interface RedactionResult {
   redactedText: string;
@@ -36,27 +37,27 @@ const NAME_VALIDATION_RULES = {
   requiresCapital: true
 };
 
-async function detectNamesWithAI(text: string): Promise<Array<{name: string, confidence: number}>> {
+async function detectNamesWithAI(text: string): Promise<Array<{ name: string, confidence: number }>> {
   try {
-    const timeoutPromise = new Promise<Array<{name: string, confidence: number}>>((_, reject) =>
+    const timeoutPromise = new Promise<Array<{ name: string, confidence: number }>>((_, reject) =>
       setTimeout(() => reject(new Error("NER timeout after 8s")), 8000)
     );
 
     const nerPromise = (async () => {
-      const genAI = getGenAI();
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const prompt = `Extract all person names from this text. Return ONLY a JSON array with objects containing "name" and "confidence" (0-1 scale). Names should be proper nouns that clearly refer to people. Filter out: common words, place names, organization names, or generic terms.
 
 Text: "${text}"
 
 Return only valid JSON array, no markdown or explanation:`;
 
+      const genAI = getGenAI();
+      const model = genAI.getGenerativeModel({ model: MODELS.GENERATIVE });
       const result = await model.generateContent(prompt);
       const response = result.response.text();
-      
+
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (!jsonMatch) return [];
-      
+
       const parsed = JSON.parse(jsonMatch[0]);
       return Array.isArray(parsed) ? parsed : [];
     })();
@@ -70,7 +71,7 @@ Return only valid JSON array, no markdown or explanation:`;
 
 function validateNameCandidate(name: string, confidence: number): boolean {
   if (!name || confidence < 0.65) return false;
-  
+
   const trimmed = name.trim();
   if (trimmed.length < NAME_VALIDATION_RULES.minLength || trimmed.length > NAME_VALIDATION_RULES.maxLength) {
     return false;
@@ -100,13 +101,12 @@ const SIMPLE_NAME_REGEX = /\b([A-Z][a-z.]*(?:[\s-][A-Z][a-z.]*)+|[A-Z]{2,}(?:[\s
 
 const SENTENCE_START_WORDS = new Set(['The', 'My', 'This', 'That', 'In', 'On', 'At', 'To', 'For', 'Of', 'By', 'From', 'With']);
 
-function detectNamesWithRegex(text: string): Array<{name: string, confidence: number}> {
-  SIMPLE_NAME_REGEX.lastIndex = 0; // Reset stateful regex
+function detectNamesWithRegex(text: string): Array<{ name: string, confidence: number }> {
+  SIMPLE_NAME_REGEX.lastIndex = 0;
   const matches = Array.from(text.matchAll(SIMPLE_NAME_REGEX));
   return matches
     .filter(match => {
       const firstWord = match[1].split(/\s+/)[0];
-      // Filter out common sentence-starting words if it's likely just start of sentence
       if (SENTENCE_START_WORDS.has(firstWord) && match.index === 0) return false;
       return true;
     })
@@ -122,12 +122,12 @@ export const redactPII = async (text: string): Promise<RedactionResult> => {
   let emailCounter = 1;
   let nameCounter = 1;
 
-  EMAIL_REGEX.lastIndex = 0; // Reset stateful regex
+  EMAIL_REGEX.lastIndex = 0;
   const emailMatches = text.matchAll(EMAIL_REGEX);
   for (const match of emailMatches) {
     const value = match[0];
     const placeholder = `[EMAIL_${emailCounter}]`;
-    
+
     detectedPII.push({
       type: 'email',
       value,
@@ -159,7 +159,7 @@ export const redactPII = async (text: string): Promise<RedactionResult> => {
 
   for (const name of Array.from(detectedNames)) {
     const placeholder = `[NAME_${nameCounter}]`;
-    
+
     const confidence = aiNames.find(n => n.name === name)?.confidence || 0.7;
     detectedPII.push({
       type: 'name',
