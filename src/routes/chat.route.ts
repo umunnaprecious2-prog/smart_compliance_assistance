@@ -17,6 +17,71 @@ const INJECTION_PATTERNS = [
     /dan mode/i
 ];
 
+/**
+ * @swagger
+ * /api/chat/ask:
+ *   post:
+ *     summary: Ask a question and get an AI-powered response
+ *     description: Sends a question to the AI assistant which searches documents and provides an answer with confidence scoring
+ *     tags:
+ *       - Chat
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - question
+ *             properties:
+ *               question:
+ *                 type: string
+ *                 description: The question to ask the AI assistant
+ *                 example: "What are the compliance requirements?"
+ *               sessionId:
+ *                 type: number
+ *                 description: Optional session ID for conversation continuity
+ *                 example: 1
+ *               documentId:
+ *                 type: number
+ *                 description: Optional specific document ID to search within
+ *                 example: 5
+ *     responses:
+ *       200:
+ *         description: Successful AI response with confidence score and session ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessionId:
+ *                   type: number
+ *                 answer:
+ *                   type: string
+ *                 citations:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 piiRedacted:
+ *                   type: boolean
+ *                 confidenceScore:
+ *                   type: number
+ *                   format: float
+ *                 warning:
+ *                   type: string
+ *       400:
+ *         description: Bad request - missing question or security alert
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 chatRouter.post('/ask', async (req, res) => {
     try {
         const { question, sessionId, documentId } = req.body;
@@ -98,6 +163,40 @@ chatRouter.post('/ask', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/chat/session/{sessionId}:
+ *   get:
+ *     summary: Get messages from a specific chat session
+ *     description: Retrieves all messages from a conversation session by ID
+ *     tags:
+ *       - Chat
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: The session ID
+ *     responses:
+ *       200:
+ *         description: Session messages retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessionId:
+ *                   type: number
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ChatMessage'
+ *       404:
+ *         description: Session not found
+ *       500:
+ *         description: Internal server error
+ */
 chatRouter.get('/session/:sessionId', async (req, res) => {
     try {
         const { sessionId } = req.params;
@@ -118,6 +217,42 @@ chatRouter.get('/session/:sessionId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/chat/sessions:
+ *   get:
+ *     summary: Get recent chat sessions
+ *     description: Retrieves a list of recent conversation sessions with preview of last message
+ *     tags:
+ *       - Chat
+ *     responses:
+ *       200:
+ *         description: List of recent sessions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: number
+ *                       title:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                       lastMessage:
+ *                         type: string
+ *       500:
+ *         description: Internal server error
+ */
 chatRouter.get('/sessions', async (req, res) => {
     try {
         const sessions = await getRecentSessions(20);
@@ -137,6 +272,41 @@ chatRouter.get('/sessions', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/chat/ask-stream:
+ *   post:
+ *     summary: Stream AI response as it's being generated
+ *     description: Returns a Server-Sent Events stream of the AI response being generated in real-time
+ *     tags:
+ *       - Chat
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - question
+ *             properties:
+ *               question:
+ *                 type: string
+ *               sessionId:
+ *                 type: number
+ *               documentId:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Stream of text chunks
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
 chatRouter.post('/ask-stream', async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");

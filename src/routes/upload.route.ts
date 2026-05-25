@@ -9,11 +9,89 @@ import { prisma } from '../lib/prisma.ts';
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
+/**
+ * @swagger
+ * /upload:
+ *   get:
+ *     summary: List all uploaded documents
+ *     description: Retrieves a list of all documents that have been uploaded and indexed
+ *     tags:
+ *       - Upload
+ *     responses:
+ *       200:
+ *         description: Array of documents
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Document'
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/', async (req, res) => {
   const result = await prisma.document.findMany();
   res.json(result);
 });
 
+/**
+ * @swagger
+ * /upload:
+ *   post:
+ *     summary: Upload and index a PDF document
+ *     description: |
+ *       Uploads a PDF file, extracts text, chunks the content using semantic chunking,
+ *       and creates embeddings for semantic search. Processing includes PII detection and redaction.
+ *     tags:
+ *       - Upload
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pdf
+ *             properties:
+ *               pdf:
+ *                 type: string
+ *                 format: binary
+ *                 description: PDF file to upload and process
+ *     responses:
+ *       200:
+ *         description: Document uploaded and processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 document:
+ *                   $ref: '#/components/schemas/Document'
+ *                 chunks:
+ *                   type: number
+ *                   description: Number of chunks created from the document
+ *                 chunking_metrics:
+ *                   type: object
+ *                   properties:
+ *                     total_chunks:
+ *                       type: number
+ *                     avg_chunk_size:
+ *                       type: number
+ *                     embedding_time_ms:
+ *                       type: number
+ *       400:
+ *         description: No file uploaded or invalid file format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error during processing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/', upload.single('pdf'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
