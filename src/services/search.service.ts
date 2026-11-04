@@ -20,14 +20,16 @@ const keywordSearch = async (query: string, limit = 5, documentId?: number) => {
   });
 
   const scored = chunks.map(chunk => {
-    const content = chunk.content.toLowerCase();
-    let score = 0;
+    const contentWords = chunk.content.toLowerCase().split(/\W+/);
+    const wordCounts: Record<string, number> = {};
+    for (const word of contentWords) {
+      wordCounts[word] = (wordCounts[word] || 0) + 1;
+    }
 
-    keywords.forEach(keyword => {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-      const matches = content.match(regex);
-      score += (matches ? matches.length : 0);
-    });
+    let score = 0;
+    for (const keyword of keywords) {
+      score += (wordCounts[keyword] || 0);
+    }
 
     return {
       ...chunk,
@@ -74,7 +76,7 @@ export const semanticSearch = async (query: string, limit = 5, documentId?: numb
 
     return results;
   } catch (error) {
-    console.warn("Vector search failed, falling back to keyword search:", (error as any).message);
+    console.warn("Vector search failed, falling back to keyword search: %s", (error as any).message);
     return keywordSearch(query, limit, documentId);
   }
 };
@@ -98,7 +100,7 @@ async function generateMissingEmbeddings(documentId?: number) {
         WHERE id = ${chunk.id}
       `;
     } catch (error) {
-      console.error(`Failed to embed chunk ${chunk.id}:`, error);
+      console.error("Failed to embed chunk %d: %o", chunk.id, error);
     }
   }
 }

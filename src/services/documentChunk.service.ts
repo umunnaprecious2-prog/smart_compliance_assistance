@@ -39,7 +39,7 @@ export const processAndSaveChunks = async (chunks: string[], sourceName: string)
         WHERE "documentId" = ${result.id} AND content = ${chunk.content}
       `;
     } catch (error) {
-      console.error(`Failed to generate embedding for chunk in ${sourceName}:`, (error as any).message);
+      console.error('Failed to generate embedding for chunk in %s:', sourceName, (error as any).message);
     }
   }
 
@@ -56,4 +56,3 @@ export const getLatestDocument = async () => {
     orderBy: { createdAt: 'desc' }
   });
 };
-

@@ -40,7 +40,7 @@ export const indexAllDocuments = async (): Promise<IndexingProgress> => {
 
       processed++;
     } catch (error) {
-      console.error(`Failed to index chunk ${chunk.id}:`, error);
+      console.error('Failed to index chunk %s:', chunk.id, error);
       failed++;
     }
   }
