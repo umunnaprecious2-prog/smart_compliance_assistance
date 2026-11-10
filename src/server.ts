@@ -12,11 +12,11 @@ import indexRouter from './routes/indexing.route.ts';
 
 const app = express();
 const port = 3000;
-app.use(cors());
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || 'http://localhost:3000' }));
 
 app.use(express.json());
 
-app.use(express.static(path.join(process.cwd())));
+app.use(express.static(path.join(process.cwd(), 'public')));
 
 // ============ SWAGGER CONFIGURATION ============
 const swaggerOptions = {
@@ -148,7 +148,7 @@ app.use('/api/chat', chatRouter);
 app.use('/api/admin/index', indexRouter);
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'index.html'));
+  res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
 });
 
 app.listen(port, () => {

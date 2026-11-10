@@ -268,7 +268,7 @@ chatRouter.get('/sessions', async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching sessions:', error);
-        res.status(500).json({ error: 'Failed to fetch sessions', details: String(error) });
+        res.status(500).json({ error: 'Failed to fetch sessions' });
     }
 });
 
@@ -311,7 +311,6 @@ chatRouter.post('/ask-stream', async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
 
     try {
         const { question, sessionId: sessionIdParam, documentId } = req.body;
@@ -406,7 +405,7 @@ chatRouter.post('/ask-stream', async (req, res) => {
         res.end();
     } catch (error: any) {
         console.error('Streaming error:', error);
-        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.write(`data: ${JSON.stringify({ error: "An internal error occurred while processing your request." })}\n\n`);
         res.end();
     }
 });

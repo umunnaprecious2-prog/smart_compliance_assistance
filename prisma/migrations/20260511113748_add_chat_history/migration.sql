@@ -21,5 +21,8 @@ CREATE TABLE "ChatMessage" (
     CONSTRAINT "ChatMessage_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateIndex
+CREATE INDEX "ChatMessage_sessionId_idx" ON "ChatMessage"("sessionId");
+
 -- AddForeignKey
 ALTER TABLE "ChatMessage" ADD CONSTRAINT "ChatMessage_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "ChatSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -55,10 +55,11 @@ Return only valid JSON array, no markdown or explanation:`;
       const result = await model.generateContent(prompt);
       const response = result.response.text();
 
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) return [];
+      const start = response.indexOf('[');
+      const end = response.lastIndexOf(']');
+      if (start === -1 || end === -1 || end <= start) return [];
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(response.substring(start, end + 1));
       return Array.isArray(parsed) ? parsed : [];
     })();
 
@@ -168,7 +169,8 @@ export const redactPII = async (text: string): Promise<RedactionResult> => {
       confidence
     });
 
-    redactedText = redactedText.replace(new RegExp(`\\b${name}\\b`, 'g'), placeholder);
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    redactedText = redactedText.replace(new RegExp(`\\b${escapedName}\\b`, 'g'), placeholder);
     nameCounter++;
   }
 

@@ -5,6 +5,7 @@ import { extractTextFromPDF } from '../utils/file.helper.ts';
 import { semanticChunkWithMetrics } from '../utils/chunking.helper.ts';
 import { processAndSaveChunks } from '../services/documentChunk.service.ts';
 import { prisma } from '../lib/prisma.ts';
+import { requireAuth } from '../middleware/auth.ts';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
@@ -29,7 +30,7 @@ const upload = multer({ dest: 'uploads/' });
  *       500:
  *         description: Internal server error
  */
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   const result = await prisma.document.findMany();
   res.json(result);
 });
@@ -92,7 +93,7 @@ router.get('/', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', upload.single('pdf'), async (req, res) => {
+router.post('/', requireAuth, upload.single('pdf'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }

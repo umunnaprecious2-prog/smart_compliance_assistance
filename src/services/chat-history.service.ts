@@ -40,13 +40,23 @@ export const getSessionMessages = async (sessionId: number) => {
         orderBy: { createdAt: 'asc' }
     });
     
-    return messages.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-        citations: msg.citations ? JSON.parse(msg.citations as string) : null,
-        confidenceScore: msg.confidenceScore,
-        createdAt: msg.createdAt
-    }));
+    return messages.map(msg => {
+        let parsedCitations = null;
+        if (msg.citations) {
+            try {
+                parsedCitations = JSON.parse(msg.citations as string);
+            } catch {
+                parsedCitations = null;
+            }
+        }
+        return {
+            role: msg.role,
+            content: msg.content,
+            citations: parsedCitations,
+            confidenceScore: msg.confidenceScore,
+            createdAt: msg.createdAt
+        };
+    });
 };
 
 export const createSession = async (firstMessage?: string) => {

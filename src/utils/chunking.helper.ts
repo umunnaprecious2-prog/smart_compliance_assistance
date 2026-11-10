@@ -88,6 +88,9 @@ export interface ChunkingResult {
 
 export function semanticChunkWithMetrics(text: string): ChunkingResult {
   const chunks = semanticChunk(text);
+  if (chunks.length === 0) {
+    return { chunks: [], totalChunks: 0, avgChunkSize: 0, compressionRatio: 0 };
+  }
   const totalSize = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
   const avgChunkSize = Math.round(totalSize / chunks.length);
   const compressionRatio = Math.round((text.length / chunks.length) * 100) / 100;

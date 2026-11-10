@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { semanticSearch } from '../services/search.service.ts';
+import { authenticate } from '../middleware/auth.middleware.ts';
 
 const searchRouter = Router();
 
@@ -53,7 +54,7 @@ const searchRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-searchRouter.post('/query', async (req, res) => {
+searchRouter.post('/query', authenticate, async (req, res) => {
     try {
         const { question } = req.body;
 
