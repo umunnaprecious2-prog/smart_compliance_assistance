@@ -9,6 +9,8 @@ interface IndexingProgress {
   completed: boolean;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const indexAllDocuments = async (): Promise<IndexingProgress> => {
   const chunksToIndex = await prisma.documentChunk.findMany({
     where: { embeddingGenerated: false } as any,
@@ -26,22 +28,31 @@ export const indexAllDocuments = async (): Promise<IndexingProgress> => {
 
   let processed = 0;
   let failed = 0;
+  const BATCH_SIZE = 50;
 
-  for (const chunk of chunksToIndex) {
-    try {
-      const embedding = await generateEmbedding(chunk.content);
-      const embeddingStr = `[${embedding.join(',')}]`;
+  for (let i = 0; i < chunksToIndex.length; i += BATCH_SIZE) {
+    const batch = chunksToIndex.slice(i, i + BATCH_SIZE);
+    
+    for (const chunk of batch) {
+      try {
+        const embedding = await generateEmbedding(chunk.content);
+        const embeddingStr = `[${embedding.join(',')}]`;
 
-      await prisma.$executeRaw`
-        UPDATE "DocumentChunk"
-        SET embedding = ${embeddingStr}::vector, "embeddingGenerated" = true
-        WHERE id = ${chunk.id}
-      `;
+        await prisma.$executeRaw`
+          UPDATE "DocumentChunk"
+          SET embedding = ${embeddingStr}::vector, "embeddingGenerated" = true
+          WHERE id = ${chunk.id}
+        `;
 
-      processed++;
-    } catch (error) {
-      console.error(`Failed to index chunk ${chunk.id}:`, error);
-      failed++;
+        processed++;
+      } catch (error) {
+        console.error(`Failed to index chunk ${chunk.id}:`, error);
+        failed++;
+      }
+    }
+
+    if (i + BATCH_SIZE < chunksToIndex.length) {
+      await sleep(100);
     }
   }
 

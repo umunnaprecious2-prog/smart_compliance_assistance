@@ -37,6 +37,10 @@ const NAME_VALIDATION_RULES = {
   requiresCapital: true
 };
 
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function detectNamesWithAI(text: string): Promise<Array<{ name: string, confidence: number }>> {
   try {
     const timeoutPromise = new Promise<Array<{ name: string, confidence: number }>>((_, reject) =>
@@ -168,7 +172,7 @@ export const redactPII = async (text: string): Promise<RedactionResult> => {
       confidence
     });
 
-    redactedText = redactedText.replace(new RegExp(`\\b${name}\\b`, 'g'), placeholder);
+    redactedText = redactedText.replace(new RegExp(`\\b${escapeRegExp(name)}\\b`, 'g'), placeholder);
     nameCounter++;
   }
 

@@ -7,7 +7,16 @@ import { processAndSaveChunks } from '../services/documentChunk.service.ts';
 import { prisma } from '../lib/prisma.ts';
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ 
+  dest: 'uploads/',
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDFs allowed'));
+    }
+  }
+});
 
 /**
  * @swagger
