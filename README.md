@@ -16,6 +16,11 @@ You must create a file named .env in the root folder of the project. Copy and pa
 PORT=3000
 DATABASE_URL=your_postgresql_database_link_here
 GEMINI_API_KEY=your_google_gemini_api_key_here
+ADMIN_API_KEY=a_long_random_secret_at_least_16_characters
+
+ADMIN_API_KEY protects the admin routes: uploading and listing documents (/upload) and indexing (/api/admin/index). Chat and search stay public. Generate a strong value, for example with:
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+If ADMIN_API_KEY is missing or shorter than 16 characters, the admin routes are switched off (503).
 
 Database Preparation
 To prepare the database for storing document information, run this command:
@@ -30,8 +35,10 @@ Example API Calls
 You can test the system using a tool like Postman.
 
 To upload a document
-Send a POST request to http://localhost:3000/api/upload
-Attach your PDF file in the form-data section.
+Send a POST request to http://localhost:3000/upload
+Add the header x-admin-key with your ADMIN_API_KEY value.
+Attach your PDF file in the form-data section, under the key pdf.
+In the web page, type the admin key in the box next to the Upload PDF button.
 
 To ask a question
 Send a POST request to http://localhost:3000/api/chat/ask

@@ -193,6 +193,7 @@
     <div class="card">
         <h2>1. Upload Document</h2>
         <input type="file" id="fileInput" accept=".pdf">
+        <input type="password" id="adminKeyInput" placeholder="Admin key (ADMIN_API_KEY)" autocomplete="off">
         <button onclick="uploadFile()">Upload PDF</button>
         <p id="uploadStatus"></p>
     </div>
@@ -318,14 +319,29 @@
             const fileInput = document.getElementById('fileInput');
             const status = document.getElementById('uploadStatus');
             if (!fileInput.files[0]) return alert("Select a file first");
+            // Uploading is admin-only: the key is kept for this browser tab only.
+            const keyInput = document.getElementById('adminKeyInput');
+            const adminKey = keyInput.value || sessionStorage.getItem('adminKey') || '';
+            if (!adminKey) return alert("Enter the admin key first");
 
             const formData = new FormData();
             formData.append('pdf', fileInput.files[0]);
 
             status.innerText = "Uploading and indexing...";
             try {
-                const response = await fetch(`http://localhost:3000/upload`, { method: 'POST', body: formData });
-                const result = await response.json();
+                const response = await fetch(`http://localhost:3000/upload`, {
+                    method: 'POST',
+                    headers: { 'x-admin-key': adminKey },
+                    body: formData
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    if (response.status === 401) sessionStorage.removeItem('adminKey');
+                    status.innerText = "Upload failed: " + (result.error || `HTTP ${response.status}`);
+                    return;
+                }
+                sessionStorage.setItem('adminKey', adminKey);
+                keyInput.value = '';
                 status.innerText = "Upload Successful!";
             } catch (err) {
                 status.innerText = "Upload failed. Make sure server is running.";

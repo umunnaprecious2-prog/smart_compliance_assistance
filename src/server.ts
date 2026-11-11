@@ -8,6 +8,7 @@ import uploadRouter from './routes/upload.route.ts';
 import searchRoute from './routes/search.route.ts';
 import chatRouter from './routes/chat.route.ts';
 import indexRouter from './routes/indexing.route.ts';
+import { requireAdminKey } from './middleware/admin-key.ts';
 
 
 const app = express();
@@ -37,6 +38,14 @@ const swaggerOptions = {
       },
     ],
     components: {
+      securitySchemes: {
+        AdminKey: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-admin-key',
+          description: 'The ADMIN_API_KEY value from .env. Needed for document upload/listing and indexing.',
+        },
+      },
       schemas: {
         Error: {
           type: 'object',
@@ -142,10 +151,12 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 // ============ API ROUTES ============
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use('/upload', uploadRouter);
+// Admin only (x-admin-key): uploading and listing documents, re-indexing.
+// Chat and search stay public.
+app.use('/upload', requireAdminKey, uploadRouter);
 app.use('/api', searchRoute);
 app.use('/api/chat', chatRouter);
-app.use('/api/admin/index', indexRouter);
+app.use('/api/admin/index', requireAdminKey, indexRouter);
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'index.html'));

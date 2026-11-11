@@ -17,7 +17,13 @@ const upload = multer({ dest: 'uploads/' });
  *     description: Retrieves a list of all documents that have been uploaded and indexed
  *     tags:
  *       - Upload
+ *     security:
+ *       - AdminKey: []
  *     responses:
+ *       401:
+ *         description: Missing or invalid admin key (x-admin-key header)
+ *       503:
+ *         description: Admin routes are switched off (ADMIN_API_KEY not set)
  *       200:
  *         description: Array of documents
  *         content:
@@ -57,7 +63,13 @@ router.get('/', async (req, res) => {
  *                 type: string
  *                 format: binary
  *                 description: PDF file to upload and process
+ *     security:
+ *       - AdminKey: []
  *     responses:
+ *       401:
+ *         description: Missing or invalid admin key (x-admin-key header)
+ *       503:
+ *         description: Admin routes are switched off (ADMIN_API_KEY not set)
  *       200:
  *         description: Document uploaded and processed successfully
  *         content:

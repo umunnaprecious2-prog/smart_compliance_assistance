@@ -11,7 +11,13 @@ const indexRouter = Router();
  *     description: Retrieves the status of the document indexing system
  *     tags:
  *       - Admin
+ *     security:
+ *       - AdminKey: []
  *     responses:
+ *       401:
+ *         description: Missing or invalid admin key (x-admin-key header)
+ *       503:
+ *         description: Admin routes are switched off (ADMIN_API_KEY not set)
  *       200:
  *         description: Current indexing status
  *         content:
@@ -65,7 +71,13 @@ indexRouter.get('/status', async (req, res) => {
  *       This is an admin-only operation and may take considerable time.
  *     tags:
  *       - Admin
+ *     security:
+ *       - AdminKey: []
  *     responses:
+ *       401:
+ *         description: Missing or invalid admin key (x-admin-key header)
+ *       503:
+ *         description: Admin routes are switched off (ADMIN_API_KEY not set)
  *       200:
  *         description: Indexing completed successfully
  *         content:
