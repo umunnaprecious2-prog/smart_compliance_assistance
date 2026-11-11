@@ -24,20 +24,28 @@ export const processAndSaveChunks = async (chunks: string[], sourceName: string)
   for (const chunk of dataToSave) {
     const metadataJson = JSON.stringify(chunk.metadata);
 
-    await prisma.$executeRaw`
-      INSERT INTO "DocumentChunk" (content, metadata, "embeddingGenerated", "documentId")
-      VALUES (${chunk.content}, ${metadataJson}::jsonb, false, ${result.id})
-    `;
-
     try {
-      const embedding = await generateEmbedding(chunk.content);
-      const embeddingStr = `[${embedding.join(',')}]`;
+      await prisma.$transaction(async (tx) => {
+        const createdChunk = await tx.documentChunk.create({
+          data: {
+            content: chunk.content,
+            metadata: metadataJson,
+            embeddingGenerated: false,
+            documentId: result.id
+          }
+        });
 
-      await prisma.$executeRaw`
-        UPDATE "DocumentChunk" 
-        SET embedding = ${embeddingStr}::vector, "embeddingGenerated" = true
-        WHERE "documentId" = ${result.id} AND content = ${chunk.content}
-      `;
+        const embedding = await generateEmbedding(chunk.content);
+        const embeddingStr = `[${embedding.join(',')}]`;
+
+        await tx.documentChunk.update({
+          where: { id: createdChunk.id },
+          data: {
+            embedding: embeddingStr,
+            embeddingGenerated: true
+          }
+        });
+      });
     } catch (error) {
       console.error(`Failed to generate embedding for chunk in ${sourceName}:`, (error as any).message);
     }
@@ -56,4 +64,3 @@ export const getLatestDocument = async () => {
     orderBy: { createdAt: 'desc' }
   });
 };
-

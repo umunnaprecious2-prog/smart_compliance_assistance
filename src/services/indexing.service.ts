@@ -13,6 +13,7 @@ export const indexAllDocuments = async (): Promise<IndexingProgress> => {
   const chunksToIndex = await prisma.documentChunk.findMany({
     where: { embeddingGenerated: false } as any,
     select: { id: true, content: true },
+    take: 50,
   });
 
   if (chunksToIndex.length === 0) {
@@ -49,7 +50,7 @@ export const indexAllDocuments = async (): Promise<IndexingProgress> => {
     total: chunksToIndex.length,
     processed,
     failed,
-    completed: true,
+    completed: chunksToIndex.length < 50,
   };
 };
 
