@@ -16,7 +16,7 @@ app.use(cors());
 
 app.use(express.json());
 
-app.use(express.static(path.join(process.cwd())));
+app.use(express.static(path.join(process.cwd(), 'public')));
 
 // ============ SWAGGER CONFIGURATION ============
 const swaggerOptions = {
@@ -148,7 +148,7 @@ app.use('/api/chat', chatRouter);
 app.use('/api/admin/index', indexRouter);
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'index.html'));
+  res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
 });
 
 app.listen(port, () => {

@@ -5,9 +5,21 @@ import { extractTextFromPDF } from '../utils/file.helper.ts';
 import { semanticChunkWithMetrics } from '../utils/chunking.helper.ts';
 import { processAndSaveChunks } from '../services/documentChunk.service.ts';
 import { prisma } from '../lib/prisma.ts';
+import { isLoggedIn } from '../middleware/auth.ts';
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({
+  dest: 'uploads/',
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      const error = new Error('Only PDFs allowed');
+      (error as any).code = 'INVALID_FILE_TYPE';
+      cb(error);
+    }
+  }
+});
 
 /**
  * @swagger
@@ -92,19 +104,18 @@ router.get('/', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', upload.single('pdf'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-
+router.post('/', isLoggedIn, upload.single('pdf'), (req, res, next) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  next();
+}, async (req, res) => {
   try {
-    console.log('File received:', req.file.originalname);
+    console.log('File received:', req.file!.originalname);
 
     let extraction: Awaited<ReturnType<typeof extractTextFromPDF>>;
     let chunkingMetrics: Awaited<ReturnType<typeof semanticChunkWithMetrics>>;
 
     try {
-      extraction = await extractTextFromPDF(req.file.path);
+      extraction = await extractTextFromPDF(req.file!.path);
 
       chunkingMetrics = semanticChunkWithMetrics(extraction.text);
 
@@ -122,7 +133,7 @@ router.post('/', upload.single('pdf'), async (req, res) => {
     }
 
     try {
-      const savedDoc = await processAndSaveChunks(chunkingMetrics.chunks, req.file.originalname);
+      const savedDoc = await processAndSaveChunks(chunkingMetrics.chunks, req.file!.originalname);
       console.log(`[Database] ${savedDoc.chunks.length} semantic chunks saved to PostgreSQL.`);
 
       res.status(200).json({
@@ -144,6 +155,9 @@ router.post('/', upload.single('pdf'), async (req, res) => {
       await fs.unlink(req.file.path).catch(e => console.error('Cleanup Error:', e));
     }
   }
+}, (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err.code === 'INVALID_FILE_TYPE') return res.status(400).json({ error: err.message });
+  next(err);
 });
 
 export default router;

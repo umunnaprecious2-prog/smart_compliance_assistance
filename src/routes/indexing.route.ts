@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { indexAllDocuments, getIndexingStatus } from '../services/indexing.service.ts';
+import { requireAdmin } from '../middleware/auth.middleware.ts';
 
 const indexRouter = Router();
 
@@ -41,7 +42,7 @@ const indexRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-indexRouter.get('/status', async (req, res) => {
+indexRouter.get('/status', requireAdmin, async (req, res) => {
   try {
     const status = await getIndexingStatus();
     res.status(200).json({
@@ -91,7 +92,7 @@ indexRouter.get('/status', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-indexRouter.post('/', async (req, res) => {
+indexRouter.post('/', requireAdmin, async (req, res) => {
   try {
     const result = await indexAllDocuments();
 

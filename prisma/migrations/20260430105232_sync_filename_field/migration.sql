@@ -8,11 +8,13 @@
 */
 -- AlterTable
 ALTER TABLE "Document" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN     "filename" TEXT NOT NULL,
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL;
+ADD COLUMN     "filename" TEXT,
+ADD COLUMN     "updatedAt" TIMESTAMP(3);
 
 -- AlterTable
-ALTER TABLE "DocumentChunk" ADD COLUMN     "documentId" INTEGER NOT NULL;
+ALTER TABLE "DocumentChunk" ADD COLUMN     "documentId" INTEGER;
+
+-- TODO: Run a data migration script to populate 'filename', 'updatedAt', and 'documentId' for existing rows, then alter columns to NOT NULL.
 
 -- AddForeignKey
 ALTER TABLE "DocumentChunk" ADD CONSTRAINT "DocumentChunk_documentId_fkey" FOREIGN KEY ("documentId") REFERENCES "Document"("id") ON DELETE CASCADE ON UPDATE CASCADE;
