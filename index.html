@@ -215,8 +215,11 @@
     </div>
 
     <script>
+        function escapeHtml(unsafe) {
+            return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
         const API_BASE = "http://localhost:3000/api";
-        let currentSessionId = localStorage.getItem('currentSessionId') || null;
+        let currentSessionId = localStorage.getItem(&#039;currentSessionId&#039;) || null;
 
         async function loadSessions() {
             try {
@@ -224,31 +227,31 @@
                 const result = await response.json();
                 
                 if (!response.ok) {
-                    console.error('Server error:', result);
+                    console.error(&#039;Server error:&#039;, result);
                     return;
                 }
                 
-                const sessionsList = document.getElementById('sessionsList');
-                sessionsList.innerHTML = '<h3>Past Conversations</h3>';
+                const sessionsList = document.getElementById(&#039;sessionsList&#039;);
+                sessionsList.innerHTML = &#039;<h3>Past Conversations</h3>&#039;;
                 
                 if (!result.sessions || result.sessions.length === 0) {
-                    sessionsList.innerHTML += '<p style="color:#999;">No sessions yet</p>';
+                    sessionsList.innerHTML += &#039;<p style="color:#999;">No sessions yet</p>&#039;;
                     return;
                 }
                 
                 result.sessions.forEach(session => {
-                    const sessionDiv = document.createElement('div');
-                    sessionDiv.className = 'session-item';
+                    const sessionDiv = document.createElement(&#039;div&#039;);
+                    sessionDiv.className = &#039;session-item&#039;;
                     sessionDiv.innerHTML = `
                         <div onclick="loadSession(${session.id})" style="cursor:pointer; padding:10px; border: 1px solid #ddd; margin:5px; border-radius:4px;">
-                            <strong>${session.title}</strong>
+                            <strong>${escapeHtml(session.title)}</strong>
                             <small style="display:block; color:#999;">${new Date(session.updatedAt).toLocaleDateString()}</small>
                         </div>
                     `;
                     sessionsList.appendChild(sessionDiv);
                 });
             } catch (err) {
-                console.error('Error loading sessions:', err);
+                console.error(&#039;Error loading sessions:&#039;, err);
             }
         }
 
@@ -258,22 +261,22 @@
                 const result = await response.json();
                 
                 currentSessionId = sessionId;
-                localStorage.setItem('currentSessionId', sessionId);
+                localStorage.setItem(&#039;currentSessionId&#039;, sessionId);
                 
-                const chatbox = document.getElementById('chatbox');
-                chatbox.innerHTML = '';
+                const chatbox = document.getElementById(&#039;chatbox&#039;);
+                chatbox.innerHTML = &#039;&#039;;
                 
                 result.messages.forEach(msg => {
-                    const role = msg.role === 'user' ? 'You' : 'AI';
-                    if (msg.role === 'user') {
-                        chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${msg.content}</div>`;
+                    const role = msg.role === &#039;user&#039; ? &#039;You&#039; : &#039;AI&#039;;
+                    if (msg.role === &#039;user&#039;) {
+                        chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${escapeHtml(msg.content)}</div>`;
                     } else {
-                        chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${msg.content}</div>`;
+                        chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${escapeHtml(msg.content)}</div>`;
                         
                         if (msg.confidenceScore !== null && msg.confidenceScore !== undefined) {
                             const confidencePercent = (msg.confidenceScore * 100).toFixed(0);
-                            const confidenceColor = msg.confidenceScore > 0.7 ? '#27ae60' : 
-                                                   msg.confidenceScore > 0.4 ? '#f39c12' : '#e74c3c';
+                            const confidenceColor = msg.confidenceScore > 0.7 ? &#039;#27ae60&#039; : 
+                                                   msg.confidenceScore > 0.4 ? &#039;#f39c12&#039; : &#039;#e74c3c&#039;;
                             const fillWidth = (msg.confidenceScore * 100).toFixed(0);
                             chatbox.innerHTML += `
                                 <div class="response-metadata">
@@ -293,7 +296,7 @@
                             msg.citations.forEach(c => {
                                 chatbox.innerHTML += `
                                     <div class="citation-item">
-                                        <span class="citation-id">Chunk #${c.chunkId}</span>: ${c.excerpt}...
+                                        <span class="citation-id">Chunk #${c.chunkId}</span>: ${escapeHtml(c.excerpt)}...
                                     </div>
                                 `;
                             });
@@ -303,28 +306,28 @@
                 });
                 chatbox.scrollTop = chatbox.scrollHeight;
             } catch (err) {
-                console.error('Error loading session:', err);
+                console.error(&#039;Error loading session:&#039;, err);
             }
         }
 
         function startNewChat() {
             currentSessionId = null;
-            localStorage.removeItem('currentSessionId');
-            document.getElementById('chatbox').innerHTML = '';
+            localStorage.removeItem(&#039;currentSessionId&#039;);
+            document.getElementById(&#039;chatbox&#039;).innerHTML = &#039;&#039;;
             loadSessions();
         }
 
         async function uploadFile() {
-            const fileInput = document.getElementById('fileInput');
-            const status = document.getElementById('uploadStatus');
+            const fileInput = document.getElementById(&#039;fileInput&#039;);
+            const status = document.getElementById(&#039;uploadStatus&#039;);
             if (!fileInput.files[0]) return alert("Select a file first");
 
             const formData = new FormData();
-            formData.append('pdf', fileInput.files[0]);
+            formData.append(&#039;pdf&#039;, fileInput.files[0]);
 
             status.innerText = "Uploading and indexing...";
             try {
-                const response = await fetch(`http://localhost:3000/upload`, { method: 'POST', body: formData });
+                const response = await fetch(`http://localhost:3000/upload`, { method: &#039;POST&#039;, body: formData });
                 const result = await response.json();
                 status.innerText = "Upload Successful!";
             } catch (err) {
@@ -333,18 +336,18 @@
         }
 
         async function askQuestion() {
-            const questionInput = document.getElementById('questionInput');
-            const chatbox = document.getElementById('chatbox');
+            const questionInput = document.getElementById(&#039;questionInput&#039;);
+            const chatbox = document.getElementById(&#039;chatbox&#039;);
             const question = questionInput.value;
             if (!question) return;
 
-            chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${question}</div>`;
+            chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${escapeHtml(question)}</div>`;
             questionInput.value = "";
 
             try {
                 const response = await fetch(`${API_BASE}/chat/ask`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: &#039;POST&#039;,
+                    headers: { &#039;Content-Type&#039;: &#039;application/json&#039; },
                     body: JSON.stringify({ 
                         question,
                         sessionId: currentSessionId
@@ -354,28 +357,28 @@
 
                 if (result.sessionId) {
                     currentSessionId = result.sessionId;
-                    localStorage.setItem('currentSessionId', result.sessionId);
+                    localStorage.setItem(&#039;currentSessionId&#039;, result.sessionId);
                 }
 
                 if (result.error) {
-                    chatbox.innerHTML += `<p style="color:red"><strong>Error:</strong> ${result.error}</p>`;
+                    chatbox.innerHTML += `<p style="color:red"><strong>Error:</strong> ${escapeHtml(result.error)}</p>`;
                 } else {
-                    chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${result.answer}</div>`;
+                    chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${escapeHtml(result.answer)}</div>`;
                     
                     if (result.warning) {
-                        chatbox.innerHTML += `<div class="pii-warning"><strong>⚠️ Privacy Protection:</strong> ${result.warning}</div>`;
+                        chatbox.innerHTML += `<div class="pii-warning"><strong>⚠️ Privacy Protection:</strong> ${escapeHtml(result.warning)}</div>`;
                     }
 
                     const confidencePercent = (result.confidenceScore * 100).toFixed(0);
-                    const confidenceColor = result.confidenceScore > 0.7 ? '#27ae60' : 
-                                           result.confidenceScore > 0.4 ? '#f39c12' : '#e74c3c';
+                    const confidenceColor = result.confidenceScore > 0.7 ? &#039;#27ae60&#039; : 
+                                           result.confidenceScore > 0.4 ? &#039;#f39c12&#039; : &#039;#e74c3c&#039;;
                     const fillWidth = (result.confidenceScore * 100).toFixed(0);
                     
                     chatbox.innerHTML += `
                         <div class="response-metadata">
                             <div class="metadata-item">
                                 <span class="metadata-label">Session ID</span>
-                                <span class="metadata-value"><span class="session-badge">${result.sessionId}</span></span>
+                                <span class="metadata-value"><span class="session-badge">${escapeHtml(result.sessionId)}</span></span>
                             </div>
                             <div class="metadata-item">
                                 <span class="metadata-label">Confidence Score</span>
@@ -386,7 +389,7 @@
                             </div>
                             <div class="metadata-item">
                                 <span class="metadata-label">PII Redacted</span>
-                                <span class="metadata-value">${result.piiRedacted ? '✓ Yes' : '✗ No'}</span>
+                                <span class="metadata-value">${result.piiRedacted ? &#039;✓ Yes&#039; : &#039;✗ No&#039;}</span>
                             </div>
                         </div>
                     `;
@@ -396,7 +399,7 @@
                         result.citations.forEach(c => {
                             chatbox.innerHTML += `
                                 <div class="citation-item">
-                                    <span class="citation-id">Chunk #${c.chunkId}</span>: ${c.excerpt}...
+                                    <span class="citation-id">Chunk #${c.chunkId}</span>: ${escapeHtml(c.excerpt)}...
                                 </div>
                             `;
                         });

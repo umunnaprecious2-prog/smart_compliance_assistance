@@ -16,7 +16,6 @@ app.use(cors());
 
 app.use(express.json());
 
-app.use(express.static(path.join(process.cwd())));
 
 // ============ SWAGGER CONFIGURATION ============
 const swaggerOptions = {
