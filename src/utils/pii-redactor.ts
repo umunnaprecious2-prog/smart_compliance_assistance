@@ -168,7 +168,8 @@ export const redactPII = async (text: string): Promise<RedactionResult> => {
       confidence
     });
 
-    redactedText = redactedText.replace(new RegExp(`\\b${name}\\b`, 'g'), placeholder);
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    redactedText = redactedText.replace(new RegExp(`\\b${escapedName}\\b`, 'g'), placeholder);
     nameCounter++;
   }
 
