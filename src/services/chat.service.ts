@@ -256,7 +256,7 @@ ANSWER:
         } catch (error) {
             console.warn("Stream generation error (using fallback):", (error as any).message);
 
-            const confidence = calculateConfidence(chunks, question, false);
+            const confidence = calculateConfidence(chunks, question, piiRedacted);
             if (confidence < 0.3) {
                 yield "I cannot find relevant information in the documents to answer your question.";
             } else {
@@ -276,4 +276,3 @@ ANSWER:
         yield `Error: ${(error as any).message}`;
     }
 };
-

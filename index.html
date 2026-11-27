@@ -218,6 +218,10 @@
         const API_BASE = "http://localhost:3000/api";
         let currentSessionId = localStorage.getItem('currentSessionId') || null;
 
+        function escapeHtml(unsafe) {
+            return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
         async function loadSessions() {
             try {
                 const response = await fetch(`${API_BASE}/chat/sessions`);
@@ -241,7 +245,7 @@
                     sessionDiv.className = 'session-item';
                     sessionDiv.innerHTML = `
                         <div onclick="loadSession(${session.id})" style="cursor:pointer; padding:10px; border: 1px solid #ddd; margin:5px; border-radius:4px;">
-                            <strong>${session.title}</strong>
+                            <strong>${escapeHtml(session.title)}</strong>
                             <small style="display:block; color:#999;">${new Date(session.updatedAt).toLocaleDateString()}</small>
                         </div>
                     `;
@@ -266,9 +270,9 @@
                 result.messages.forEach(msg => {
                     const role = msg.role === 'user' ? 'You' : 'AI';
                     if (msg.role === 'user') {
-                        chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${msg.content}</div>`;
+                        chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${escapeHtml(msg.content)}</div>`;
                     } else {
-                        chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${msg.content}</div>`;
+                        chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${escapeHtml(msg.content)}</div>`;
                         
                         if (msg.confidenceScore !== null && msg.confidenceScore !== undefined) {
                             const confidencePercent = (msg.confidenceScore * 100).toFixed(0);
@@ -293,7 +297,7 @@
                             msg.citations.forEach(c => {
                                 chatbox.innerHTML += `
                                     <div class="citation-item">
-                                        <span class="citation-id">Chunk #${c.chunkId}</span>: ${c.excerpt}...
+                                        <span class="citation-id">Chunk #${c.chunkId}</span>: ${escapeHtml(c.excerpt)}...
                                     </div>
                                 `;
                             });
@@ -338,7 +342,7 @@
             const question = questionInput.value;
             if (!question) return;
 
-            chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${question}</div>`;
+            chatbox.innerHTML += `<div class="user-message"><strong>You:</strong> ${escapeHtml(question)}</div>`;
             questionInput.value = "";
 
             try {
@@ -358,12 +362,12 @@
                 }
 
                 if (result.error) {
-                    chatbox.innerHTML += `<p style="color:red"><strong>Error:</strong> ${result.error}</p>`;
+                    chatbox.innerHTML += `<p style="color:red"><strong>Error:</strong> ${escapeHtml(result.error)}</p>`;
                 } else {
-                    chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${result.answer}</div>`;
+                    chatbox.innerHTML += `<div class="ai-response"><strong>AI Assistant:</strong> ${escapeHtml(result.answer)}</div>`;
                     
                     if (result.warning) {
-                        chatbox.innerHTML += `<div class="pii-warning"><strong>⚠️ Privacy Protection:</strong> ${result.warning}</div>`;
+                        chatbox.innerHTML += `<div class="pii-warning"><strong>⚠️ Privacy Protection:</strong> ${escapeHtml(result.warning)}</div>`;
                     }
 
                     const confidencePercent = (result.confidenceScore * 100).toFixed(0);
@@ -375,7 +379,7 @@
                         <div class="response-metadata">
                             <div class="metadata-item">
                                 <span class="metadata-label">Session ID</span>
-                                <span class="metadata-value"><span class="session-badge">${result.sessionId}</span></span>
+                                <span class="metadata-value"><span class="session-badge">${escapeHtml(result.sessionId)}</span></span>
                             </div>
                             <div class="metadata-item">
                                 <span class="metadata-label">Confidence Score</span>
@@ -396,7 +400,7 @@
                         result.citations.forEach(c => {
                             chatbox.innerHTML += `
                                 <div class="citation-item">
-                                    <span class="citation-id">Chunk #${c.chunkId}</span>: ${c.excerpt}...
+                                    <span class="citation-id">Chunk #${c.chunkId}</span>: ${escapeHtml(c.excerpt)}...
                                 </div>
                             `;
                         });
